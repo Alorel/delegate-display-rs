@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 5 * * 1,3,6"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: --deny warnings
+
+jobs:
+  test:
+    name: Rust ${{matrix.toolchain}} on ${{matrix.os}}
+    runs-on: ${{matrix.toolchain}}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        toolchain:
+          - stable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Init toolchain
+        uses: dtolnay/rust-toolchain@master
+        id: toolchain
+        with:
+          toolchain: ${{matrix.toolchain}}
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: v1-cargo-${{runner.os}}-${{steps.toolchain.outputs.cachekey}}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: v1-cargo-${{runner.os}}-${{steps.toolchain.outputs.cachekey}}-
+      - name: Lint
+        run: cargo fmt --check --locked
+      - name: Test
+        run: cargo test --locked

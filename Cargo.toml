@@ -1,18 +1,17 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-name = "rs-lib-template-repo"
-version = "0.1.0"
+name = "delegate-display"
+version = "1.0.0"
 edition = "2021"
 publish = false
-#rust-version = "0.69.420"
+rust-version = "1.56.0"
 authors = [
   "Alorel <amolc@pm.me>",
 ]
 license = "MIT"
-license-file = "LICENSE"
 readme = "README.md"
-description = "Shame - I haven't changed the template description"
+description = "derive(Display, Debug) for structs/enums with one member"
 repository = "https://github.com/Alorel/XXX"
 keywords = []
 categories = []
@@ -21,6 +20,13 @@ include = [
   "Cargo.toml",
 ]
 
-[features]
+[lib]
+proc-macro = true
+
+[workspace]
+members = ["delegate-display-testing"]
 
 [dependencies]
+proc-macro2 = { version = "1"}
+quote = { version = "1"}
+syn = { version = "1", features = ["parsing", "derive"]}

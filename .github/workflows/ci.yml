@@ -16,7 +16,7 @@ env:
 jobs:
   test:
     name: Rust ${{matrix.toolchain}} on ${{matrix.os}}
-    runs-on: ${{matrix.toolchain}}
+    runs-on: ${{matrix.os}}
     strategy:
       matrix:
         os:
@@ -44,6 +44,8 @@ jobs:
           key: v1-cargo-${{runner.os}}-${{steps.toolchain.outputs.cachekey}}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: v1-cargo-${{runner.os}}-${{steps.toolchain.outputs.cachekey}}-
       - name: Lint
-        run: cargo fmt --check --locked
+        run: cargo fmt --check
+      - name: Build
+        run: cargo build --workspace --tests --locked
       - name: Test
-        run: cargo test --locked
+        run: cargo test --workspace --locked

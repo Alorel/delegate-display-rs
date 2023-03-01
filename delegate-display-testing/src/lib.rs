@@ -3,7 +3,6 @@
 #![allow(dead_code)]
 
 use delegate_display::*;
-use std::fmt;
 
 #[derive(DelegateDisplay, DelegateDebug)]
 struct SA;
@@ -25,7 +24,7 @@ struct SE {
 #[derive(DelegateDisplay)]
 struct SF<T>(T)
 where
-    T: fmt::Display;
+    T: core::fmt::Display;
 
 #[derive(DelegateDisplay, DelegateDebug)]
 enum EA {}
@@ -38,7 +37,7 @@ enum EB {
 }
 
 #[derive(DelegateDebug)]
-enum EC<T: fmt::Debug> {
+enum EC<T: core::fmt::Debug> {
     A,
     B(T),
     C { val: String },

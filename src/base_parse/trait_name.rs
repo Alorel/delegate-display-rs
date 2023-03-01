@@ -3,14 +3,14 @@ use quote::ToTokens;
 
 use super::util::{ident, punct};
 
-/// Basically prepends the ident with `std::fmt::`
+/// Basically prepends the ident with `core::fmt::`
 pub struct TraitName(pub Ident);
 
 impl ToTokens for TraitName {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         {
             let col = punct(':');
-            ident("std").to_tokens(tokens);
+            ident("core").to_tokens(tokens);
             col.to_tokens(tokens);
             col.to_tokens(tokens);
             ident("fmt").to_tokens(tokens);

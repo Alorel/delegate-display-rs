@@ -7,7 +7,7 @@ Lets you derive `Display` and `Debug` traits by delegating them to the only memb
 
 ```rust
 use delegate_display::{DelegateDebug, DelegateDisplay};
-use std::fmt;
+use core::fmt;
 
 // Input
 #[derive(DelegateDebug, DelegateDisplay)]

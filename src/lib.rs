@@ -1,10 +1,10 @@
-//! Lets you derive [Display](std::fmt::Display) & [Debug](std::fmt::Debug) traits on structs with
+//! Lets you derive [Display](core::fmt::Display) & [Debug](core::fmt::Debug) traits on structs with
 //! `0..1` fields & enums where each variant has `0..1` fields - see input/output examples below.
 //!
 //! # Newtype structs
 //!
 //! ```
-//! # use std::fmt;
+//! # use core::fmt;
 //! # type SomeType = u8;
 //! #
 //! // Input
@@ -25,7 +25,7 @@
 //!
 //! ```
 //! # type SomeType = u8;
-//! # use std::fmt;
+//! # use core::fmt;
 //! #
 //! // Input
 //! #[derive(delegate_display::DelegateDebug)]
@@ -50,7 +50,7 @@
 //! # impl DebugOrDisplay {
 //! #  fn fmt(_: &SomeType, _: &mut fmt::Formatter<'_>) -> fmt::Result { Ok(()) }
 //! # }
-//! # use std::fmt;
+//! # use core::fmt;
 //! #
 //! // Input
 //! enum MyEnum {
@@ -74,7 +74,7 @@
 //! # Empty structs & enums
 //!
 //! ```
-//! # use std::fmt;
+//! # use core::fmt;
 //! #
 //! // Input
 //! struct Foo;
@@ -117,7 +117,7 @@ use base_parse::BaseParse;
 
 mod base_parse;
 
-/// Derive the [Debug](std::fmt::Debug) trait - see [module-level documentation](self) for
+/// Derive the [Debug](core::fmt::Debug) trait - see [module-level documentation](self) for
 /// information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDebug)]
 #[inline]
@@ -125,7 +125,7 @@ pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
     BaseParse::for_trait("Debug", tokens)
 }
 
-/// Derive the [Display](std::fmt::Display) trait - see [module-level documentation](self) for
+/// Derive the [Display](core::fmt::Display) trait - see [module-level documentation](self) for
 /// information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDisplay)]
 #[inline]

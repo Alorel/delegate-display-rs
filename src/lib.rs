@@ -6,7 +6,7 @@
 //! ```
 //! # use std::fmt;
 //! # type SomeType = u8;
-//!
+//! #
 //! // Input
 //! #[derive(delegate_display::DelegateDisplay)]
 //! # struct TheOlSwitcheroo;
@@ -26,7 +26,7 @@
 //! ```
 //! # type SomeType = u8;
 //! # use std::fmt;
-//!
+//! #
 //! // Input
 //! #[derive(delegate_display::DelegateDebug)]
 //! # struct TheOlSwitcheroo;
@@ -51,7 +51,7 @@
 //! #  fn fmt(_: &SomeType, _: &mut fmt::Formatter<'_>) -> fmt::Result { Ok(()) }
 //! # }
 //! # use std::fmt;
-//!
+//! #
 //! // Input
 //! enum MyEnum {
 //!   Foo,
@@ -75,7 +75,7 @@
 //!
 //! ```
 //! # use std::fmt;
-//!
+//! #
 //! // Input
 //! struct Foo;
 //! struct Bar{}
@@ -94,7 +94,7 @@
 //!
 //! ```
 //! # type SomeType = u8;
-//!
+//! #
 //! struct TooManyFields1 {
 //!   foo: SomeType,
 //!   bar: SomeType, // Only one field permitted

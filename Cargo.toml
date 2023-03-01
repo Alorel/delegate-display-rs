@@ -2,7 +2,7 @@
 
 [package]
 name = "delegate-display"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 rust-version = "1.56.0"
 authors = [
@@ -12,8 +12,14 @@ license = "MIT"
 readme = "README.md"
 description = "derive(Display, Debug) for structs/enums with one member"
 repository = "https://github.com/Alorel/delegate-display-rs"
-keywords = []
-categories = []
+keywords = [
+  "derive",
+  "display",
+  "enum",
+  "debug",
+  "macro",
+]
+categories = ["development-tools::build-utils"]
 include = [
   "src/",
   "Cargo.toml",

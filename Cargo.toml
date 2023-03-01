@@ -32,6 +32,6 @@ proc-macro = true
 members = ["delegate-display-testing"]
 
 [dependencies]
-proc-macro2 = { version = "1"}
-quote = { version = "1"}
-syn = { version = "1", features = ["parsing", "derive"]}
+proc-macro2 = "1"
+quote = "1"
+syn = "1"

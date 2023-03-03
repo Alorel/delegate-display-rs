@@ -54,7 +54,7 @@ impl FirstField {
                 .map(move |(variant_name, first_field)| match first_field {
                     Some(FieldLike::Ident(id)) => {
                         quote! {
-                            Self::#variant_name { #id: _a } => #trait_name::fmt(_a, f)
+                            Self::#variant_name { #id: inner } => #trait_name::fmt(inner, f)
                         }
                     }
                     Some(FieldLike::Indexed) => {

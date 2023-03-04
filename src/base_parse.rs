@@ -46,7 +46,7 @@ impl BaseParse {
             #[automatically_derived]
             impl #gen_impl #trait_name for #src_struct #gen_type #gen_where {
                 #inline_declaration
-                fn fmt(&self, #formatter_name: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                fn fmt(&self, #formatter_name: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #body
                 }
             }

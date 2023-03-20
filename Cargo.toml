@@ -34,4 +34,4 @@ members = ["delegate-display-testing"]
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = "1"
+syn = "2"

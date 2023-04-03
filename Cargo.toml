@@ -2,7 +2,7 @@
 
 [package]
 name = "delegate-display"
-version = "1.0.7"
+version = "1.0.8"
 edition = "2021"
 rust-version = "1.56.0"
 authors = [
@@ -34,4 +34,4 @@ members = ["delegate-display-testing"]
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = "1"
+syn = "2"

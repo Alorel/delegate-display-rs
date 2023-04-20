@@ -26,6 +26,9 @@ struct SF<T>(T)
 where
     T: core::fmt::Display;
 
+#[derive(DelegateDisplay)]
+struct SG<T: core::fmt::Display = u8>(T);
+
 #[derive(DelegateDisplay, DelegateDebug)]
 enum EA {}
 

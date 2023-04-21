@@ -14,6 +14,7 @@ types:
   - chore # General maintenance work
   - revert # Reverting some previous commit. The message should be `revert: OriginalMessage CommitSha`
   - ux # User experience improvements
+  - test # Affects testing only
 scopes:
   - deps
   - deps-dev

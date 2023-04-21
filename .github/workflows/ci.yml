@@ -57,7 +57,10 @@ jobs:
         toolchain:
           - stable
           - nightly
-          - 1.56.0 # min supported by 2021 edition
+          - 1.59.0 # min needed for const generics
+        exclude:
+          - os: windows-latest
+            toolchain: nightly
     steps:
       - name: Checkout
         uses: actions/checkout@v3

@@ -1,15 +1,17 @@
-//! Lets you derive [Display](core::fmt::Display) & [Debug](core::fmt::Debug) traits on structs with
+//! Lets you derive [`Display`](::core::fmt::Display) & [`Debug`](::core::fmt::Debug) traits on structs with
 //! `0..1` fields & enums where each variant has `0..1` fields - see input/output examples below.
+//!
+//! [![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/ci.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/ci.yml?query=branch%3Amaster)
+//! [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
+//! [![docs.rs badge](https://img.shields.io/docsrs/delegate-display?label=docs.rs)](https://docs.rs/delegate-display)
+//! [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 //!
 //! # Newtype structs
 //!
+#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! # use core::fmt;
-//! # type SomeType = u8;
-//! #
 //! // Input
 //! #[derive(delegate_display::DelegateDisplay)]
-//! # struct TheOlSwitcheroo;
 //! struct Foo(SomeType);
 //!
 //! // Output
@@ -19,17 +21,14 @@
 //!     fmt::Display::fmt(&self.0, f)
 //!   }
 //! }
-//! ```
+//! ````
 //!
 //! # Structs with one field
 //!
+#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! # type SomeType = u8;
-//! # use core::fmt;
-//! #
 //! // Input
 //! #[derive(delegate_display::DelegateDebug)]
-//! # struct TheOlSwitcheroo;
 //! struct Foo { some_field: SomeType }
 //!
 //! // Output
@@ -39,19 +38,12 @@
 //!     fmt::Debug::fmt(&self.some_field, f)
 //!   }
 //! }
-//! ```
+//! ````
 //!
 //! # Enums
 //!
+#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! # #[derive(Debug)]
-//! # struct SomeType;
-//! # struct DebugOrDisplay;
-//! # impl DebugOrDisplay {
-//! #  fn fmt(_: &SomeType, _: &mut fmt::Formatter<'_>) -> fmt::Result { Ok(()) }
-//! # }
-//! # use core::fmt;
-//! #
 //! // Input
 //! enum MyEnum {
 //!   Foo,
@@ -60,7 +52,6 @@
 //! }
 //!
 //! // Output
-//! # impl fmt::Debug for MyEnum {
 //! fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //!   match self {
 //!     Self::Foo => f.write_str("Foo"),
@@ -68,14 +59,12 @@
 //!     Self::Qux { baz } => DebugOrDisplay::fmt(baz, f),
 //!   }
 //! }
-//! # }
-//! ```
+//! ````
 //!
 //! # Empty structs & enums
 //!
+#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! # use core::fmt;
-//! #
 //! // Input
 //! struct Foo;
 //! struct Bar{}
@@ -83,46 +72,53 @@
 //! enum Baz {}
 //!
 //! // Output
-//! # impl fmt::Debug for Foo {
 //! fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
 //!   Ok(())
 //! }
-//! # }
-//! ```
+//! ````
 //!
 //! # Invalid inputs
 //!
-//! ```
-//! # type SomeType = u8;
-//! #
+//! ```compile_fail
+//! #[derive(delegate_display::DelegateDebug)]
 //! struct TooManyFields1 {
-//!   foo: SomeType,
-//!   bar: SomeType, // Only one field permitted
+//!   foo: u8,
+//!   bar: u8, // Only one field permitted
 //! }
+//! ```
 //!
-//! struct TooManyFields2(SomeType, SomeType);
+//! ```compile_fail
+//! #[derive(delegate_display::DelegateDebug)]
+//! struct TooManyFields2(u8, u8); // too many fields
+//! ```
 //!
+//! ```compile_fail
+//! #[derive(delegate_display::DelegateDebug)]
 //! enum SomeEnum {
 //!   A, // this is ok
-//!   B(SomeType), // this is ok
-//!   C { foo: SomeType }, // this is ok
-//!   D(SomeType, SomeType), // Only one field permitted
-//!   E { foo: SomeType, bar: SomeType } // Only one field permitted
+//!   B(u8), // this is ok
+//!   C { foo: u8 }, // this is ok
+//!   D(u8, u8), // Only one field permitted
+//!   E { foo: u8, bar: u8 } // Only one field permitted
 //! }
 //! ```
+
+#![deny(clippy::correctness, clippy::suspicious)]
+#![warn(clippy::complexity, clippy::perf, clippy::style, clippy::pedantic)]
+#![allow(clippy::wildcard_imports, clippy::default_trait_access)]
+#![warn(missing_docs)]
 
 use proc_macro::TokenStream as BaseTokenStream;
 
-use base_parse::BaseParse;
-
-mod base_parse;
+mod parse;
+mod tokenise;
 
 /// Derive the [Debug](core::fmt::Debug) trait - see [module-level documentation](self) for
 /// information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDebug)]
 #[inline]
 pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
-    BaseParse::for_trait("Debug", tokens)
+    ParsedData::process("Debug", tokens)
 }
 
 /// Derive the [Display](core::fmt::Display) trait - see [module-level documentation](self) for
@@ -130,5 +126,21 @@ pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
 #[proc_macro_derive(DelegateDisplay)]
 #[inline]
 pub fn derive_display(tokens: BaseTokenStream) -> BaseTokenStream {
-    BaseParse::for_trait("Display", tokens)
+    ParsedData::process("Display", tokens)
+}
+
+struct ParsedData {
+    ident: syn::Ident,
+    generics: syn::Generics,
+    first_field: FirstField,
+}
+
+enum FieldLike {
+    Indexed,
+    Ident(syn::Ident),
+}
+type EnumData = (syn::Ident, Option<FieldLike>);
+enum FirstField {
+    Struct(Option<FieldLike>),
+    Enum(Vec<EnumData>),
 }

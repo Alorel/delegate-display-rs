@@ -1,0 +1,162 @@
+use macroific::elements::{ImplFor, ModulePrefix, SimpleAttr};
+use macroific::prelude::*;
+use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, TokenStream};
+use quote::{quote, ToTokens, TokenStreamExt};
+use syn::Token;
+
+use crate::{BaseTokenStream, EnumData, FieldLike, FirstField, ParsedData};
+
+impl ParsedData {
+    pub fn process(trait_name: &str, tokens: BaseTokenStream) -> BaseTokenStream {
+        let parsed = match Self::parse(tokens) {
+            Ok(p) => p,
+            Err(e) => return e.to_compile_error().into(),
+        };
+
+        parsed.into_token_stream(trait_name).into()
+    }
+
+    fn into_token_stream(self, trait_name: &str) -> TokenStream {
+        let Self {
+            ident,
+            generics,
+            first_field,
+        } = self;
+
+        let trait_name = ["std", "fmt", trait_name];
+        let trait_name = ModulePrefix::new(&trait_name);
+
+        let mut out = SimpleAttr::AUTO_DERIVED.into_token_stream();
+        ImplFor::new(&generics, &trait_name, &ident).to_tokens(&mut out);
+        drop(ident);
+
+        let mut inner = if first_field.is_inlinable() {
+            SimpleAttr::INLINE.into_token_stream()
+        } else {
+            TokenStream::new()
+        };
+        inner.append(Ident::create("fn"));
+        inner.append(Ident::create("fmt"));
+
+        let (formatter_name, body) = match first_field.into_tokens(&trait_name) {
+            Some(b) => (Ident::create("f"), b),
+            None => {
+                let res = &ModulePrefix::RESULT;
+                (Ident::create("_"), quote! { #res::Ok(()) })
+            }
+        };
+
+        inner.append(Group::new(
+            Delimiter::Parenthesis,
+            quote! {
+                &self, #formatter_name: &mut ::core::fmt::Formatter<'_>
+            },
+        ));
+
+        <Token![->]>::default().to_tokens(&mut inner);
+        ModulePrefix::new(&["core", "fmt", "Result"]).to_tokens(&mut inner);
+
+        inner.append(Group::new(Delimiter::Brace, body));
+
+        out.append(Group::new(Delimiter::Brace, inner));
+
+        out
+    }
+}
+
+impl FirstField {
+    /// Whether we should include `#[inline]` or not
+    fn is_inlinable(&self) -> bool {
+        match *self {
+            Self::Struct(_) => true,
+            Self::Enum(ref v) => v.is_empty(),
+        }
+    }
+
+    /// Like [`ToTokens::to_token_stream`], but accepts the trait name to derive for
+    ///
+    /// # Returns
+    ///
+    /// `Some` if we should call `fmt()`, `None` if we shouldn't
+    pub fn into_tokens(self, trait_name: &impl ToTokens) -> Option<TokenStream> {
+        Some(match self {
+            Self::Struct(None) => return None,
+            Self::Struct(Some(data)) => quote! { #trait_name::fmt(&#data, f) },
+            Self::Enum(data) => {
+                if data.is_empty() {
+                    return None;
+                }
+
+                Self::tokenise_enum(trait_name, data)
+            }
+        })
+    }
+
+    /// Non-empty `enum` handler for [`Self::to_tokens_opt`]
+    fn tokenise_enum(trait_name: &impl ToTokens, data: Vec<EnumData>) -> TokenStream {
+        let mut out = TokenStream::new();
+        out.append(Ident::create("match"));
+        out.append(Ident::create("self"));
+
+        let mut body = TokenStream::new();
+        body.append_separated(
+            data.into_iter().map(move |(variant_name, first_field)| {
+                let mut out = quote!(Self::);
+
+                let first_field = match first_field {
+                    Some(field) => field,
+                    None => {
+                        let lit = Literal::string(&variant_name.to_string()).into_token_stream();
+                        out.append(variant_name);
+
+                        <Token![=>]>::default().to_tokens(&mut out);
+                        out.append(Ident::create("f"));
+                        out.append(Punct::new_joint('.'));
+                        out.append(Ident::create("write_str"));
+                        out.append(Group::new(Delimiter::Parenthesis, lit));
+
+                        return out;
+                    }
+                };
+
+                out.append(variant_name);
+
+                match first_field {
+                    FieldLike::Ident(id) => {
+                        let mut stream = TokenStream::new();
+                        stream.append(id);
+                        stream.append(Punct::new_alone(':'));
+                        stream.append(Ident::create("inner"));
+
+                        out.append(Group::new(Delimiter::Brace, stream));
+                    }
+                    FieldLike::Indexed => {
+                        let stream = quote!(inner);
+                        out.append(Group::new(Delimiter::Parenthesis, stream));
+                    }
+                }
+
+                out.extend(quote!(=> #trait_name::fmt(inner, f)));
+
+                out
+            }),
+            Punct::new_joint(','),
+        );
+
+        out.append(Group::new(Delimiter::Brace, body));
+
+        out
+    }
+}
+
+impl ToTokens for FieldLike {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.append(Ident::create("self"));
+        tokens.append(Punct::new_joint('.'));
+
+        match self {
+            Self::Indexed => tokens.append(Literal::usize_unsuffixed(0)),
+            Self::Ident(id) => id.to_tokens(tokens),
+        }
+    }
+}

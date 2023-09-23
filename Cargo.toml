@@ -4,7 +4,7 @@
 name = "delegate-display"
 version = "1.0.8"
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.60.0"
 authors = [
   "Alorel <amolc@pm.me>",
 ]
@@ -28,10 +28,11 @@ include = [
 [lib]
 proc-macro = true
 
-[workspace]
-members = ["delegate-display-testing"]
-
 [dependencies]
+macroific = { version = "1.2.2", features = ["attr_parse"] }
 proc-macro2 = "1"
 quote = "1"
 syn = "2"
+
+[dev-dependencies]
+static_assertions = "1.1.0"

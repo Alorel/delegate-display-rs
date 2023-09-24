@@ -1,7 +1,7 @@
 <!-- cargo-rdme start -->
 
-Lets you derive [`Display`](https://doc.rust-lang.org/stable/core/fmt/trait.Display.html) & [`Debug`](https://doc.rust-lang.org/stable/core/fmt/trait.Debug.html) traits on structs with
-`0..1` fields & enums where each variant has `0..1` fields - see input/output examples below.
+Lets you derive `Display` & `Debug` traits on structs with
+`0..=1` fields & enums where each variant has `0..=1` fields - see input/output examples below.
 
 [![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/ci.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/ci.yml?query=branch%3Amaster)
 [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
@@ -73,6 +73,29 @@ enum Baz {}
 fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
   Ok(())
 }
+````
+
+# Custom generic bounds
+
+The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
+both. `ddebug` and `ddisplay` take precendence over `dboth`.
+
+- `base_bounds` will add whatever trait is being derived as a generic bound to each of the struct/enum's generic params
+- `bounds(...)` will let you specify specific bounds
+
+```rust
+// Input
+#[derive(DelegateDisplay, DelegateDebug)]
+#[dboth(base_bounds)]
+#[ddisplay(bounds(F: Display, B: Clone + Display))]
+enum Foo<F, B> {
+  Foo(F),
+  Bar(B),
+}
+
+// Output
+impl<F: Display, B: Clone + Display> Display for Foo<F, B> { /* ... */}
+impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
 ````
 
 # Invalid inputs

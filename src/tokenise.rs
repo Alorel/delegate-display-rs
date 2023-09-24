@@ -2,13 +2,17 @@ use macroific::elements::{ImplFor, ModulePrefix, SimpleAttr};
 use macroific::prelude::*;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::Token;
+use syn::punctuated::Punctuated;
+use syn::{
+    parse_quote, GenericParam, Path, PredicateType, Token, TraitBound, TraitBoundModifier,
+    TypeParamBound, TypePath, WherePredicate,
+};
 
 use crate::{BaseTokenStream, EnumData, FieldLike, FirstField, ParsedData};
 
 impl ParsedData {
     pub fn process(trait_name: &str, tokens: BaseTokenStream) -> BaseTokenStream {
-        let parsed = match Self::parse(tokens) {
+        let parsed = match Self::parse(tokens, trait_name) {
             Ok(p) => p,
             Err(e) => return e.to_compile_error().into(),
         };
@@ -16,17 +20,64 @@ impl ParsedData {
         parsed.into_token_stream(trait_name).into()
     }
 
-    fn into_token_stream(self, trait_name: &str) -> TokenStream {
+    fn into_token_stream(self, trait_basename: &str) -> TokenStream {
         let Self {
             ident,
-            generics,
+            mut generics,
             first_field,
+            options,
         } = self;
 
-        let trait_name = ["std", "fmt", trait_name];
+        let trait_name = ["std", "fmt", trait_basename];
         let trait_name = ModulePrefix::new(&trait_name);
 
         let mut out = SimpleAttr::AUTO_DERIVED.into_token_stream();
+
+        if options.base_bounds {
+            let predicates = generics
+                .params
+                .iter()
+                .filter_map(move |p| match *p {
+                    GenericParam::Type(ref ty) => Some(WherePredicate::Type(PredicateType {
+                        lifetimes: None,
+                        bounded_ty: syn::Type::Path(TypePath {
+                            qself: None,
+                            path: ty.ident.clone().into(),
+                        }),
+                        colon_token: match ty.colon_token {
+                            Some(t) => t,
+                            None => Default::default(),
+                        },
+                        bounds: {
+                            let mut bounds = Punctuated::new();
+                            bounds.push(TypeParamBound::Trait(TraitBound {
+                                paren_token: None,
+                                modifier: TraitBoundModifier::None,
+                                lifetimes: None,
+                                path: {
+                                    let mut path: Path = parse_quote!(::core::fmt);
+                                    path.segments.push(Ident::create(trait_basename).into());
+
+                                    path
+                                },
+                            }));
+                            bounds
+                        },
+                    })),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            if !predicates.is_empty() {
+                generics.make_where_clause().predicates.extend(predicates);
+            }
+        } else if !options.bounds.is_empty() {
+            generics
+                .make_where_clause()
+                .predicates
+                .extend(options.bounds);
+        }
+
         ImplFor::new(&generics, &trait_name, &ident).to_tokens(&mut out);
         drop(ident);
 
@@ -104,7 +155,7 @@ impl FirstField {
                 let mut out = quote!(Self::);
 
                 let first_field = match first_field {
-                    Some(field) => field,
+                    Some(field) => *field,
                     None => {
                         let lit = Literal::string(&variant_name.to_string()).into_token_stream();
                         out.append(variant_name);
@@ -122,7 +173,7 @@ impl FirstField {
                 out.append(variant_name);
 
                 match first_field {
-                    FieldLike::Ident(id) => {
+                    FieldLike::Ident(id, _) => {
                         let mut stream = TokenStream::new();
                         stream.append(id);
                         stream.append(Punct::new_alone(':'));
@@ -130,7 +181,7 @@ impl FirstField {
 
                         out.append(Group::new(Delimiter::Brace, stream));
                     }
-                    FieldLike::Indexed => {
+                    FieldLike::Indexed(_) => {
                         let stream = quote!(inner);
                         out.append(Group::new(Delimiter::Parenthesis, stream));
                     }
@@ -154,9 +205,9 @@ impl ToTokens for FieldLike {
         tokens.append(Ident::create("self"));
         tokens.append(Punct::new_joint('.'));
 
-        match self {
-            Self::Indexed => tokens.append(Literal::usize_unsuffixed(0)),
-            Self::Ident(id) => id.to_tokens(tokens),
+        match *self {
+            Self::Indexed(_) => tokens.append(Literal::usize_unsuffixed(0)),
+            Self::Ident(ref id, _) => id.to_tokens(tokens),
         }
     }
 }

@@ -1,13 +1,64 @@
+use macroific::prelude::*;
 use syn::punctuated::Punctuated;
 use syn::{Data, DataEnum, DataStruct, DeriveInput, Error, Field, Fields};
 
+use crate::ContainerOptions;
 use crate::{BaseTokenStream, EnumData, FieldLike, FirstField, ParsedData};
 
 impl ParsedData {
-    pub fn parse(input: BaseTokenStream) -> syn::Result<Self> {
+    pub fn parse(input: BaseTokenStream, trait_name: &str) -> syn::Result<Self> {
         let input = syn::parse::<DeriveInput>(input)?;
         Ok(Self {
             first_field: input.data.try_into()?,
+            options: if input.attrs.is_empty() {
+                Default::default()
+            } else {
+                let specific_attr = format!("dd{}", &trait_name[1..]);
+                let mut both = None;
+                let mut specific = None;
+
+                for attr in input.attrs {
+                    if let Some(ident) = attr.path().get_ident() {
+                        macro_rules! parse {
+                            ($opt: ident, $msg: expr) => {
+                                if $opt.is_some() {
+                                    return Err(Error::new_spanned(ident, $msg));
+                                }
+
+                                $opt = Some(attr);
+                            };
+                        }
+
+                        match ident.to_string().as_str() {
+                            "dboth" => {
+                                parse!(both, "Cannot specify `dboth` more than once");
+                            }
+                            i if i == specific_attr => {
+                                parse!(
+                                    specific,
+                                    format!("Cannot specify `{}` more than once", specific_attr)
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                let opts = if let Some(attr) = specific.or(both) {
+                    ContainerOptions::from_attr(attr)?
+                } else {
+                    Default::default()
+                };
+
+                if opts.base_bounds && !opts.bounds.is_empty() {
+                    return Err(Error::new_spanned(
+                        opts.bounds,
+                        "Cannot specify `bounds` and `base_bounds` together",
+                    ));
+                }
+
+                opts
+            },
             ident: input.ident,
             generics: input.generics,
         })
@@ -15,7 +66,7 @@ impl ParsedData {
 }
 
 impl FirstField {
-    fn load_first_field<T>(fields: Punctuated<Field, T>) -> syn::Result<Option<FieldLike>> {
+    fn load_first_field<T>(fields: Punctuated<Field, T>) -> syn::Result<Option<Box<FieldLike>>> {
         let mut fields = fields.into_iter();
         let first = match fields.next() {
             Some(f) => f,
@@ -28,10 +79,10 @@ impl FirstField {
                 "The struct/enum can only have one member",
             ))
         } else {
-            Ok(Some(match first.ident {
-                Some(name) => FieldLike::Ident(name),
-                None => FieldLike::Indexed,
-            }))
+            Ok(Some(Box::new(match first.ident {
+                Some(name) => FieldLike::Ident(name, first.ty),
+                None => FieldLike::Indexed(first.ty),
+            })))
         }
     }
 }

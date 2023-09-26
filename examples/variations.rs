@@ -122,6 +122,7 @@ mod test {
         #[test]
         fn newtype() {
             #[derive(DelegateDebug, DelegateDisplay)]
+            #[repr(transparent)]
             struct Newtype(String);
 
             const SRC: &'static str = "Lick the frog";

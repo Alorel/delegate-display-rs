@@ -154,6 +154,19 @@
 //! ```
 //!
 //! ```compile_fail
+//! #[derive(delegate_display::DelegateDisplay)]
+//! #[ddisplay(base_bounds, bounds(T: Display))] // `base_bounds` and `bounds` are mutually exclusive
+//! struct Generic<T>(T);
+//! ```
+//!
+//! ```compile_fail
+//! #[derive(delegate_display::DelegateDisplay)]
+//! #[ddisplay(base_bounds)]
+//! #[ddisplay(base_bounds)] // `dbodh` and `ddisplay` can be mixed, but the same option can't be used twice
+//! struct Foo<T>(T);
+//! ```
+//!
+//! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
 //! struct TooManyFields1 {
 //!   foo: u8,
@@ -175,6 +188,11 @@
 //!   D(u8, u8), // Only one field permitted
 //!   E { foo: u8, bar: u8 } // Only one field permitted
 //! }
+//! ```
+//!
+//! ```compile_fail
+//! #[derive(delegate_display::DelegateDebug)]
+//! union Foo { bar: u8 } // Unions are not supported
 //! ```
 //!
 //! </details>

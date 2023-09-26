@@ -135,6 +135,27 @@ assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
 <details><summary><h3>Invalid inputs</h3></summary>
 
 ```rust
+#[derive(DelegateDisplay, Debug)]
+#[dboth(delegate_to(String))] // `delegate_to` is not supported on enums
+enum SomeEnum {
+  Foo(Arc<String>)
+}
+```
+
+```rust
+#[derive(delegate_display::DelegateDisplay)]
+#[ddisplay(base_bounds, bounds(T: Display))] // `base_bounds` and `bounds` are mutually exclusive
+struct Generic<T>(T);
+```
+
+```rust
+#[derive(delegate_display::DelegateDisplay)]
+#[ddisplay(base_bounds)]
+#[ddisplay(base_bounds)] // `dbodh` and `ddisplay` can be mixed, but the same option can't be used twice
+struct Foo<T>(T);
+```
+
+```rust
 #[derive(delegate_display::DelegateDebug)]
 struct TooManyFields1 {
   foo: u8,
@@ -160,10 +181,7 @@ enum SomeEnum {
 
 ```rust
 #[derive(delegate_display::DelegateDebug)]
-#[ddebug(delegate_to(String))] // `delegate_to` is not supported on enums
-enum SomeEnum {
-  Foo(std::sync::Arc<String>)
-}
+union Foo { bar: u8 } // Unions are not supported
 ```
 
 </details>

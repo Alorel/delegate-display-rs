@@ -8,7 +8,9 @@ Lets you derive `Display` & `Debug` traits on structs with
 [![docs.rs badge](https://img.shields.io/docsrs/delegate-display?label=docs.rs)](https://docs.rs/delegate-display)
 [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 
-# Newtype structs
+# Examples
+
+<details><summary><h3>Newtype structs</h3></summary>
 
 ```rust
 // Input
@@ -24,7 +26,9 @@ impl fmt::Display for Foo {
 }
 ````
 
-# Structs with one field
+</details>
+
+<details><summary><h3>Structs with one field</h3></summary>
 
 ```rust
 // Input
@@ -40,7 +44,9 @@ impl fmt::Debug for Foo {
 }
 ````
 
-# Enums
+</details>
+
+<details><summary><h3>Enums</h3></summary>
 
 ```rust
 // Input
@@ -60,7 +66,9 @@ fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 ````
 
-# Empty structs & enums
+</details>
+
+<details><summary><h3>Empty structs & enums</h3></summary>
 
 ```rust
 // Input
@@ -75,7 +83,9 @@ fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 ````
 
-# Custom generic bounds
+</details>
+
+<details><summary><h3>Custom generic bounds</h3></summary>
 
 The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
 both. `ddebug` and `ddisplay` take precendence over `dboth`.
@@ -98,7 +108,31 @@ impl<F: Display, B: Clone + Display> Display for Foo<F, B> { /* ... */}
 impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
 ````
 
-# Invalid inputs
+</details>
+
+<details><summary><h3>Typed delegations</h3></summary>
+
+Can be useful for further prettifying the output.
+
+```rust
+/// Some type that `Deref`s to the type we want to use in our formatting, in this case, `str`.
+#[derive(Debug)]
+struct Wrapper(&'static str);
+
+#[derive(DelegateDebug)]
+#[ddebug(delegate_to(str))] // ignore `Wrapper` and debug the `str` it `Deref`s instead
+struct Typed(Wrapper);
+
+#[derive(DelegateDebug)] // Included for comparison
+struct Base(Wrapper);
+
+assert_eq!(format!("{:?}", Typed(Wrapper("foo"))), "\"foo\"");
+assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
+```
+
+</details>
+
+<details><summary><h3>Invalid inputs</h3></summary>
 
 ```rust
 #[derive(delegate_display::DelegateDebug)]
@@ -123,5 +157,15 @@ enum SomeEnum {
   E { foo: u8, bar: u8 } // Only one field permitted
 }
 ```
+
+```rust
+#[derive(delegate_display::DelegateDebug)]
+#[ddebug(delegate_to(String))] // `delegate_to` is not supported on enums
+enum SomeEnum {
+  Foo(std::sync::Arc<String>)
+}
+```
+
+</details>
 
 <!-- cargo-rdme end -->

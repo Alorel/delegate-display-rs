@@ -89,7 +89,8 @@ impl ParsedData {
         inner.append(Ident::create("fn"));
         inner.append(Ident::create("fmt"));
 
-        let (formatter_name, body) = match first_field.into_tokens(&trait_name) {
+        let (formatter_name, body) = match first_field.into_tokens(&trait_name, options.delegate_to)
+        {
             Some(b) => (Ident::create("f"), b),
             None => {
                 let res = &ModulePrefix::RESULT;
@@ -129,10 +130,24 @@ impl FirstField {
     /// # Returns
     ///
     /// `Some` if we should call `fmt()`, `None` if we shouldn't
-    pub fn into_tokens(self, trait_name: &impl ToTokens) -> Option<TokenStream> {
+    pub fn into_tokens(
+        self,
+        trait_name: &impl ToTokens,
+        delegate_to: Option<syn::Type>,
+    ) -> Option<TokenStream> {
         Some(match self {
             Self::Struct(None) => return None,
-            Self::Struct(Some(data)) => quote! { #trait_name::fmt(&#data, f) },
+            Self::Struct(Some(data)) => {
+                let mut out = if let Some(delegate_to) = delegate_to {
+                    quote! { <#delegate_to as #trait_name> }
+                } else {
+                    trait_name.to_token_stream()
+                };
+
+                out.extend(quote!(::fmt(&#data, f)));
+
+                out
+            }
             Self::Enum(data) => {
                 if data.is_empty() {
                     return None;

@@ -9,7 +9,6 @@ impl ParsedData {
     pub fn parse(input: BaseTokenStream, trait_name: &str) -> syn::Result<Self> {
         let input = syn::parse::<DeriveInput>(input)?;
         Ok(Self {
-            first_field: input.data.try_into()?,
             options: if input.attrs.is_empty() {
                 Default::default()
             } else {
@@ -57,8 +56,16 @@ impl ParsedData {
                     ));
                 }
 
+                if opts.delegate_to.is_some() && matches!(input.data, Data::Enum(_)) {
+                    return Err(Error::new_spanned(
+                        opts.delegate_to,
+                        "Cannot specify `delegate_to` on enums",
+                    ));
+                }
+
                 opts
             },
+            first_field: input.data.try_into()?,
             ident: input.ident,
             generics: input.generics,
         })

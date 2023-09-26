@@ -6,7 +6,9 @@
 //! [![docs.rs badge](https://img.shields.io/docsrs/delegate-display?label=docs.rs)](https://docs.rs/delegate-display)
 //! [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 //!
-//! # Newtype structs
+//! # Examples
+//!
+//! <details><summary><h3>Newtype structs</h3></summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -23,7 +25,9 @@
 //! }
 //! ````
 //!
-//! # Structs with one field
+//! </details>
+//!
+//! <details><summary><h3>Structs with one field</h3></summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -40,7 +44,9 @@
 //! }
 //! ````
 //!
-//! # Enums
+//! </details>
+//!
+//! <details><summary><h3>Enums</h3></summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -61,7 +67,9 @@
 //! }
 //! ````
 //!
-//! # Empty structs & enums
+//! </details>
+//!
+//! <details><summary><h3>Empty structs & enums</h3></summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -77,7 +85,9 @@
 //! }
 //! ````
 //!
-//! # Custom generic bounds
+//! </details>
+//!
+//! <details><summary><h3>Custom generic bounds</h3></summary>
 //!
 //! The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
 //! both. `ddebug` and `ddisplay` take precendence over `dboth`.
@@ -101,7 +111,47 @@
 //! impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
 //! ````
 //!
-//! # Invalid inputs
+//! </details>
+//!
+//! <details><summary><h3>Typed delegations</h3></summary>
+//!
+//! Can be useful for further prettifying the output.
+//!
+//! ```
+//! # use delegate_display::DelegateDebug;
+//! /// Some type that `Deref`s to the type we want to use in our formatting, in this case, `str`.
+//! #[derive(Debug)]
+//! struct Wrapper(&'static str);
+//! # impl std::ops::Deref for Wrapper {
+//! #   type Target = str;
+//! #   fn deref(&self) -> &Self::Target {
+//! #     self.0
+//! #   }
+//! # }
+//!
+//! #[derive(DelegateDebug)]
+//! #[ddebug(delegate_to(str))] // ignore `Wrapper` and debug the `str` it `Deref`s instead
+//! struct Typed(Wrapper);
+//!
+//! #[derive(DelegateDebug)] // Included for comparison
+//! struct Base(Wrapper);
+//!
+//! assert_eq!(format!("{:?}", Typed(Wrapper("foo"))), "\"foo\"");
+//! assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
+//! ```
+//!
+//! </details>
+//!
+//! <details><summary><h3>Invalid inputs</h3></summary>
+//!
+//! ```compile_fail
+//! # use {std::sync::Arc, delegate_display::DelegateDisplay};
+//! #[derive(DelegateDisplay, Debug)]
+//! #[dboth(delegate_to(String))] // `delegate_to` is not supported on enums
+//! enum SomeEnum {
+//!   Foo(Arc<String>)
+//! }
+//! ```
 //!
 //! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
@@ -126,6 +176,8 @@
 //!   E { foo: u8, bar: u8 } // Only one field permitted
 //! }
 //! ```
+//!
+//! </details>
 
 #![deny(clippy::correctness, clippy::suspicious)]
 #![warn(clippy::complexity, clippy::perf, clippy::style, clippy::pedantic)]
@@ -182,4 +234,5 @@ enum FirstField {
 struct ContainerOptions {
     pub bounds: syn::punctuated::Punctuated<syn::WherePredicate, syn::Token![,]>,
     pub base_bounds: bool,
+    pub delegate_to: Option<syn::Type>,
 }

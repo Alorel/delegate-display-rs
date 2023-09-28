@@ -8,7 +8,7 @@
 //!
 //! # Examples
 //!
-//! <details><summary><h3>Newtype structs</h3></summary>
+//! <details><summary>Newtype structs</summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -27,7 +27,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Structs with one field</h3></summary>
+//! <details><summary>Structs with one field</summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -46,7 +46,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Enums</h3></summary>
+//! <details><summary>Enums</summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -69,7 +69,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Empty structs & enums</h3></summary>
+//! <details><summary>Empty structs & enums</summary>
 //!
 #![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
@@ -87,7 +87,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Custom generic bounds</h3></summary>
+//! <details><summary>Custom generic bounds</summary>
 //!
 //! The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
 //! both. `ddebug` and `ddisplay` take precendence over `dboth`.
@@ -113,7 +113,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Typed delegations</h3></summary>
+//! <details><summary>Typed delegations</summary>
 //!
 //! Can be useful for further prettifying the output.
 //!
@@ -142,7 +142,7 @@
 //!
 //! </details>
 //!
-//! <details><summary><h3>Invalid inputs</h3></summary>
+//! <details><summary>Invalid inputs</summary>
 //!
 //! ```compile_fail
 //! # use {std::sync::Arc, delegate_display::DelegateDisplay};

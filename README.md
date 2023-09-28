@@ -10,7 +10,7 @@ Lets you derive `Display` & `Debug` traits on structs with
 
 # Examples
 
-<details><summary><h3>Newtype structs</h3></summary>
+<details><summary>Newtype structs</summary>
 
 ```rust
 // Input
@@ -28,7 +28,7 @@ impl fmt::Display for Foo {
 
 </details>
 
-<details><summary><h3>Structs with one field</h3></summary>
+<details><summary>Structs with one field</summary>
 
 ```rust
 // Input
@@ -46,7 +46,7 @@ impl fmt::Debug for Foo {
 
 </details>
 
-<details><summary><h3>Enums</h3></summary>
+<details><summary>Enums</summary>
 
 ```rust
 // Input
@@ -68,7 +68,7 @@ fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 </details>
 
-<details><summary><h3>Empty structs & enums</h3></summary>
+<details><summary>Empty structs & enums</summary>
 
 ```rust
 // Input
@@ -85,7 +85,7 @@ fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 </details>
 
-<details><summary><h3>Custom generic bounds</h3></summary>
+<details><summary>Custom generic bounds</summary>
 
 The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
 both. `ddebug` and `ddisplay` take precendence over `dboth`.
@@ -110,7 +110,7 @@ impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
 
 </details>
 
-<details><summary><h3>Typed delegations</h3></summary>
+<details><summary>Typed delegations</summary>
 
 Can be useful for further prettifying the output.
 
@@ -132,7 +132,7 @@ assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
 
 </details>
 
-<details><summary><h3>Invalid inputs</h3></summary>
+<details><summary>Invalid inputs</summary>
 
 ```rust
 #[derive(DelegateDisplay, Debug)]

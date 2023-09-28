@@ -49,7 +49,7 @@ jobs:
         run: cargo clippy --workspace --tests --examples
 
       - name: Doc
-        run: cargo doc --workspace --no-deps
+        run: cargo doc --workspace --no-deps && rm -rf target/doc
 
       - name: cargo-rdme
         uses: alorel-actions/cargo/rdme@v1

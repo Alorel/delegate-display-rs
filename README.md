@@ -9,82 +9,87 @@ Lets you derive `Display` & `Debug` traits on structs with
 [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 
 # Examples
-
 <details><summary>Newtype structs</summary>
 
 ```rust
-// Input
-#[derive(delegate_display::DelegateDisplay)]
-struct Foo(SomeType);
-
-// Output
-impl fmt::Display for Foo {
-  #[inline]
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    fmt::Display::fmt(&self.0, f)
+struct SomeType;
+impl core::fmt::Display for SomeType {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    f.write_str(">foo<")
   }
 }
-````
+
+#[derive(DelegateDisplay)]
+struct Foo(SomeType);
+
+assert_eq!(format!("{}", Foo(SomeType)), ">foo<");
+```
 
 </details>
-
 <details><summary>Structs with one field</summary>
 
 ```rust
-// Input
-#[derive(delegate_display::DelegateDebug)]
-struct Foo { some_field: SomeType }
-
-// Output
-impl fmt::Debug for Foo {
-  #[inline]
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    fmt::Debug::fmt(&self.some_field, f)
+struct SomeType;
+impl core::fmt::Debug for SomeType {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    f.write_str(">foo<")
   }
 }
-````
+
+#[derive(DelegateDebug)]
+struct Foo { some_field: SomeType }
+
+assert_eq!(format!("{:?}", Foo { some_field: SomeType }), ">foo<");
+```
 
 </details>
-
-<details><summary>Enums</summary>
+<details><summary>Enums with 0..=1 variants each</summary>
 
 ```rust
-// Input
+struct SomeType;
+struct AnotherType;
+
+impl core::fmt::Display for SomeType {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    f.write_str(">foo<")
+  }
+}
+impl core::fmt::Display for AnotherType {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    f.write_str(">bar<")
+  }
+}
+
+#[derive(DelegateDisplay)]
 enum MyEnum {
   Foo,
   Bar(SomeType),
-  Qux { baz: SomeType }
+  Qux { baz: AnotherType }
 }
 
-// Output
-fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-  match self {
-    Self::Foo => f.write_str("Foo"),
-    Self::Bar(inner) => DebugOrDisplay::fmt(inner, f),
-    Self::Qux { baz } => DebugOrDisplay::fmt(baz, f),
-  }
-}
-````
+assert_eq!(format!("{}", MyEnum::Bar(SomeType)), ">foo<");
+assert_eq!(format!("{}", MyEnum::Qux { baz: AnotherType }), ">bar<");
+```
 
 </details>
-
-<details><summary>Empty structs & enums</summary>
+<details><summary>Empty structs</summary>
 
 ```rust
-// Input
+#[derive(DelegateDebug, DelegateDisplay)]
 struct Foo;
-struct Bar{}
-struct Qux();
-enum Baz {}
 
-// Output
-fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-  Ok(())
-}
-````
+#[derive(DelegateDebug, DelegateDisplay)]
+struct Bar{}
+
+#[derive(DelegateDebug, DelegateDisplay)]
+struct Qux();
+
+assert_eq!(format!("{}-{:?}", Foo, Foo), "-");
+assert_eq!(format!("{}-{:?}", Bar{}, Bar{}), "-");
+assert_eq!(format!("{}-{:?}", Qux(), Qux()), "-");
+```
 
 </details>
-
 <details><summary>Typed delegations</summary>
 
 Can be useful for further prettifying the output.
@@ -93,6 +98,12 @@ Can be useful for further prettifying the output.
 /// Some type that `Deref`s to the type we want to use in our formatting, in this case, `str`.
 #[derive(Debug)]
 struct Wrapper(&'static str);
+impl std::ops::Deref for Wrapper {
+  type Target = str;
+  fn deref(&self) -> &Self::Target {
+    self.0
+  }
+}
 
 #[derive(DelegateDebug)]
 #[ddebug(delegate_to(str))] // ignore `Wrapper` and debug the `str` it `Deref`s instead
@@ -106,7 +117,35 @@ assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
 ```
 
 </details>
+<details><summary>Custom generic bounds</summary>
 
+```rust
+struct CopyDisplayable<T>(T);
+
+impl<T> Deref for CopyDisplayable<T> {
+  type Target = T;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl<T: Copy> Display for CopyDisplayable<T> {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    unimplemented!("Nonsense generic bound - base bounds don't work.");
+  }
+}
+
+// Without these options the implementation would have a predicate of `CopyDisplayable<T>: Debug` which would
+// effectively mean `T: Copy`; we can transform it to `T: Display` because `CopyDisplayable` derefs to `T`.
+#[derive(DelegateDisplay)]
+#[ddisplay(bounds(T: Display), delegate_to(T))]
+struct Displayable<T>(CopyDisplayable<T>);
+
+let dbg = Displayable::<String>(CopyDisplayable("cdbg".into()));
+assert_eq!(format!("{}", dbg), "cdbg");
+```
+
+</details>
 <details><summary>Invalid inputs</summary>
 
 ```rust
@@ -144,6 +183,15 @@ enum SomeEnum {
 ```rust
 #[derive(delegate_display::DelegateDebug)]
 union Foo { bar: u8 } // Unions are not supported
+```
+
+```rust
+struct NonDebug;
+
+#[derive(DelegateDebug)]
+struct Foo<A, B>(A, B);
+
+format!("{:?}", Foo(NonDebug, 1)); // NonDebug does not implement Debug
 ```
 
 </details>

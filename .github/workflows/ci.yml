@@ -111,9 +111,6 @@ jobs:
       - name: Test
         run: cargo test --locked
 
-      - name: Test (examples)
-        run: cargo test --examples --locked
-
   release:
     name: Release
     runs-on: ubuntu-latest

@@ -1,6 +1,6 @@
-name: CI
-
+name: Test
 on:
+  workflow_call: { }
   push:
     branches:
       - master
@@ -28,6 +28,23 @@ env:
   RUSTFLAGS: --deny warnings
 
 jobs:
+  doc:
+    name: Doc test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Init toolchain
+        uses: alorel-actions/cargo/init@v1
+        with:
+          cache-prefix: doc
+          cache-suffix: ${{ github.ref_name }}
+          local: true
+
+      - name: Doc
+        run: cargo doc --workspace --no-deps && rm -rf target/doc
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -40,6 +57,7 @@ jobs:
         with:
           components: rustfmt,clippy
           cache-prefix: lint
+          cache-suffix: ${{ github.ref_name }}
           local: true
 
       - name: Fmt
@@ -47,12 +65,6 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --tests --examples
-
-      - name: Doc
-        run: cargo doc --workspace --no-deps && rm -rf target/doc
-
-      - name: cargo-rdme
-        uses: alorel-actions/cargo/rdme@v1
 
   nightly-test:
     name: Rust nightly
@@ -64,8 +76,9 @@ jobs:
       - name: Init toolchain
         uses: alorel-actions/cargo/init@v1
         with:
-          toolchain: nightly-2023-09-18
+          toolchain: nightly-2024-09-29
           cache-prefix: test
+          cache-suffix: ${{ github.ref_name }}
           local: true
           components: llvm-tools-preview
 
@@ -95,7 +108,7 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - 1.60.0
+          - 1.71.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,58 +119,11 @@ jobs:
         with:
           toolchain: ${{matrix.toolchain}}
           cache-prefix: test
+          cache-suffix: ${{ github.ref_name }}
           local: true
+
+      - name: Build
+        run: cargo build --locked
 
       - name: Test
         run: cargo test --locked
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' }}
-    needs:
-      - test
-      - lint
-      - nightly-test
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        name: Checkout
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          token: ${{ secrets.GH_TOKEN }}
-
-      - name: Parse
-        id: parse
-        uses: alorel-actions/semantic-release-lite@v0
-        with:
-          minor-types: |
-            feat: Features
-          patch-types: |
-            fix: Bug Fixes
-            perf: Performance
-          trivial-types: |
-            chore: Maintenance
-            deps: Dependency updates
-            ci: CI & Build
-            build: CI & Build
-            refactor: Refactors
-            docs: Documentation
-
-      - name: Prep release
-        if: ${{ steps.parse.outputs.should-release }}
-        id: prep
-        uses: ./.github/actions/prep-release
-        with:
-          release-type: ${{ steps.parse.outputs.release-type }}
-
-      - name: Release
-        if: ${{ steps.prep.outputs.in-sync }}
-        uses: ./.github/actions/release
-        with:
-          version: ${{ steps.parse.outputs.next-version }}
-          changelog: ${{ steps.parse.outputs.changelog }}
-          issues-closed: ${{ steps.parse.outputs.issues-closed }}
-          crates-io-token: ${{ secrets.CRATES_IO_TOKEN }}

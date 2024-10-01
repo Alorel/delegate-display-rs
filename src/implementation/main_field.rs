@@ -106,7 +106,7 @@ impl MainField {
     }
 }
 
-fn duplicate_err<T>(attr_name: T, span: Span) -> syn::Error
+fn duplicate_err<T>(attr_name: T, span: Span) -> Error
 where
     T: Display,
 {

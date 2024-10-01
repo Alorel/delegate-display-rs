@@ -85,31 +85,6 @@ fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 </details>
 
-<details><summary>Custom generic bounds</summary>
-
-The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
-both. `ddebug` and `ddisplay` take precendence over `dboth`.
-
-- `base_bounds` will add whatever trait is being derived as a generic bound to each of the struct/enum's generic params
-- `bounds(...)` will let you specify specific bounds
-
-```rust
-// Input
-#[derive(DelegateDisplay, DelegateDebug)]
-#[dboth(base_bounds)]
-#[ddisplay(bounds(F: Display, B: Clone + Display))]
-enum Foo<F, B> {
-  Foo(F),
-  Bar(B),
-}
-
-// Output
-impl<F: Display, B: Clone + Display> Display for Foo<F, B> { /* ... */}
-impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
-````
-
-</details>
-
 <details><summary>Typed delegations</summary>
 
 Can be useful for further prettifying the output.
@@ -140,19 +115,6 @@ assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
 enum SomeEnum {
   Foo(Arc<String>)
 }
-```
-
-```rust
-#[derive(delegate_display::DelegateDisplay)]
-#[ddisplay(base_bounds, bounds(T: Display))] // `base_bounds` and `bounds` are mutually exclusive
-struct Generic<T>(T);
-```
-
-```rust
-#[derive(delegate_display::DelegateDisplay)]
-#[ddisplay(base_bounds)]
-#[ddisplay(base_bounds)] // `dbodh` and `ddisplay` can be mixed, but the same option can't be used twice
-struct Foo<T>(T);
 ```
 
 ```rust

@@ -86,33 +86,41 @@
 //! ````
 //!
 //! </details>
-//!
+
 //! <details><summary>Custom generic bounds</summary>
 //!
-//! The attribute names are `ddebug` for `Debug`, `ddisplay` for `Display` and `dboth` for a common config for
-//! both. `ddebug` and `ddisplay` take precendence over `dboth`.
-//!
-//! - `base_bounds` will add whatever trait is being derived as a generic bound to each of the struct/enum's generic params
-//! - `bounds(...)` will let you specify specific bounds
-//!
-#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! // Input
-//! #[derive(DelegateDisplay, DelegateDebug)]
-//! #[dboth(base_bounds)]
-//! #[ddisplay(bounds(F: Display, B: Clone + Display))]
-//! enum Foo<F, B> {
-//!   Foo(F),
-//!   Bar(B),
+//! # use delegate_display::*;
+//! # use core::fmt::{Display, Formatter, self};
+//! # use std::ops::Deref;
+//! #
+//! struct CopyDisplayable<T>(T);
+//!
+//! impl<T> Deref for CopyDisplayable<T> {
+//!   type Target = T;
+//!   fn deref(&self) -> &Self::Target {
+//!     &self.0
+//!   }
 //! }
 //!
-//! // Output
-//! impl<F: Display, B: Clone + Display> Display for Foo<F, B> { /* ... */}
-//! impl<F: Debug, B: Debug> Debug for Foo<F, B> { /* ... */ }
-//! ````
+//! impl<T: Copy> Display for CopyDisplayable<T> {
+//!   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//!     unimplemented!("Nonsense generic bound - base bounds don't work.");
+//!   }
+//! }
+//!
+//! // Without these options the implementation would have a predicate of `CopyDisplayable<T>: Debug` which would
+//! // effectively mean `T: Copy`; we can transform it to `T: Display` because `CopyDisplayable` derefs to `T`.
+//! #[derive(DelegateDisplay)]
+//! #[ddisplay(bounds(T: Display), delegate_to(T))]
+//! struct Displayable<T>(CopyDisplayable<T>);
+//!
+//! let dbg = Displayable::<String>(CopyDisplayable("cdbg".into()));
+//! assert_eq!(format!("{}", dbg), "cdbg");
+//! ```
 //!
 //! </details>
-//!
+
 //! <details><summary>Typed delegations</summary>
 //!
 //! Can be useful for further prettifying the output.
@@ -151,19 +159,6 @@
 //! enum SomeEnum {
 //!   Foo(Arc<String>)
 //! }
-//! ```
-//!
-//! ```compile_fail
-//! #[derive(delegate_display::DelegateDisplay)]
-//! #[ddisplay(base_bounds, bounds(T: Display))] // `base_bounds` and `bounds` are mutually exclusive
-//! struct Generic<T>(T);
-//! ```
-//!
-//! ```compile_fail
-//! #[derive(delegate_display::DelegateDisplay)]
-//! #[ddisplay(base_bounds)]
-//! #[ddisplay(base_bounds)] // `dbodh` and `ddisplay` can be mixed, but the same option can't be used twice
-//! struct Foo<T>(T);
 //! ```
 //!
 //! ```compile_fail
@@ -251,6 +246,5 @@ enum FirstField {
 #[derive(macroific::attr_parse::AttributeOptions, Default)]
 struct ContainerOptions {
     pub bounds: syn::punctuated::Punctuated<syn::WherePredicate, syn::Token![,]>,
-    pub base_bounds: bool,
     pub delegate_to: Option<syn::Type>,
 }

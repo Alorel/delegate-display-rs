@@ -49,13 +49,6 @@ impl ParsedData {
                     Default::default()
                 };
 
-                if opts.base_bounds && !opts.bounds.is_empty() {
-                    return Err(Error::new_spanned(
-                        opts.bounds,
-                        "Cannot specify `bounds` and `base_bounds` together",
-                    ));
-                }
-
                 if opts.delegate_to.is_some() && matches!(input.data, Data::Enum(_)) {
                     return Err(Error::new_spanned(
                         opts.delegate_to,

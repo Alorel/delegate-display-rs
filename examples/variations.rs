@@ -44,8 +44,6 @@ mod test {
         }
 
         #[derive(DelegateDisplay, DelegateDebug)]
-        #[dboth(base_bounds)]
-        #[ddebug(bounds(A: Displayable, B: Debug))]
         enum GenericB<A, B> {
             A(A),
             B(B),
@@ -69,7 +67,7 @@ mod test {
         #[test]
         fn generic() {
             #[derive(DelegateDebug)]
-            enum Generic<T: Debug> {
+            enum Generic<T: PartialEq> {
                 A(T),
             }
 
@@ -89,11 +87,6 @@ mod test {
 
     mod structs {
         use super::*;
-
-        #[derive(DelegateDebug, DelegateDisplay)]
-        #[dboth(bounds(T: Debug))]
-        #[ddisplay(base_bounds)]
-        struct GenericB<T>(T);
 
         #[test]
         fn unit() {

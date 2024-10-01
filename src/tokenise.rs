@@ -2,11 +2,7 @@ use macroific::elements::{ImplFor, ModulePrefix, SimpleAttr};
 use macroific::prelude::*;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::punctuated::Punctuated;
-use syn::{
-    parse_quote, GenericParam, Path, PredicateType, Token, TraitBound, TraitBoundModifier,
-    TypeParamBound, TypePath, WherePredicate,
-};
+use syn::{parse_quote, Token, Type, WherePredicate};
 
 use crate::{BaseTokenStream, EnumData, FieldLike, FirstField, ParsedData};
 
@@ -28,64 +24,34 @@ impl ParsedData {
             options,
         } = self;
 
-        let trait_name = ["std", "fmt", trait_basename];
+        let trait_name = ["core", "fmt", trait_basename];
         let trait_name = ModulePrefix::new(&trait_name);
 
-        let mut out = SimpleAttr::AUTO_DERIVED.into_token_stream();
-
-        if options.base_bounds {
-            let predicates = generics
-                .params
-                .iter()
-                .filter_map(move |p| match *p {
-                    GenericParam::Type(ref ty) => Some(WherePredicate::Type(PredicateType {
-                        lifetimes: None,
-                        bounded_ty: syn::Type::Path(TypePath {
-                            qself: None,
-                            path: ty.ident.clone().into(),
-                        }),
-                        colon_token: match ty.colon_token {
-                            Some(t) => t,
-                            None => Default::default(),
-                        },
-                        bounds: {
-                            let mut bounds = Punctuated::new();
-                            bounds.push(TypeParamBound::Trait(TraitBound {
-                                paren_token: None,
-                                modifier: TraitBoundModifier::None,
-                                lifetimes: None,
-                                path: {
-                                    let mut path: Path = parse_quote!(::core::fmt);
-                                    path.segments.push(Ident::create(trait_basename).into());
-
-                                    path
-                                },
-                            }));
-                            bounds
-                        },
-                    })),
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-
+        if options.bounds.is_empty() {
+            let predicates = first_field.predicates();
             if !predicates.is_empty() {
-                generics.make_where_clause().predicates.extend(predicates);
+                let iter = predicates
+                    .into_iter()
+                    .map::<WherePredicate, _>(move |ty| parse_quote!(#ty: #trait_name));
+                generics.make_where_clause().predicates.extend(iter);
             }
-        } else if !options.bounds.is_empty() {
+        } else {
             generics
                 .make_where_clause()
                 .predicates
                 .extend(options.bounds);
         }
 
+        let mut out = SimpleAttr::AUTO_DERIVED.into_token_stream();
+
         ImplFor::new(&generics, &trait_name, &ident).to_tokens(&mut out);
-        drop(ident);
 
         let mut inner = if first_field.is_inlinable() {
             SimpleAttr::INLINE.into_token_stream()
         } else {
             TokenStream::new()
         };
+
         inner.append(Ident::create("fn"));
         inner.append(Ident::create("fmt"));
 
@@ -116,12 +82,31 @@ impl ParsedData {
     }
 }
 
+impl FieldLike {
+    fn as_type(&self) -> &Type {
+        match self {
+            Self::Indexed(ty) | Self::Ident(_, ty) => ty,
+        }
+    }
+}
+
 impl FirstField {
     /// Whether we should include `#[inline]` or not
     fn is_inlinable(&self) -> bool {
         match *self {
             Self::Struct(_) => true,
             Self::Enum(ref v) => v.is_empty(),
+        }
+    }
+
+    pub fn predicates(&self) -> Vec<&Type> {
+        match self {
+            Self::Struct(Some(field)) => vec![field.as_type()],
+            Self::Enum(variants) => variants
+                .iter()
+                .filter_map(move |(_, field)| field.as_ref().map(|f| f.as_type()))
+                .collect(),
+            Self::Struct(None) => Vec::new(),
         }
     }
 

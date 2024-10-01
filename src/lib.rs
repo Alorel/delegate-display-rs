@@ -7,83 +7,124 @@
 //! [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 //!
 //! # Examples
-//!
+
 //! <details><summary>Newtype structs</summary>
 //!
-#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! // Input
-//! #[derive(delegate_display::DelegateDisplay)]
+//! # use delegate_display::*;
+//! struct SomeType;
+//! impl core::fmt::Display for SomeType {
+//!   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//!     f.write_str(">foo<")
+//!   }
+//! }
+//!
+//! #[derive(DelegateDisplay)]
 //! struct Foo(SomeType);
 //!
-//! // Output
-//! impl fmt::Display for Foo {
-//!   #[inline]
-//!   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//!     fmt::Display::fmt(&self.0, f)
-//!   }
-//! }
-//! ````
+//! assert_eq!(format!("{}", Foo(SomeType)), ">foo<");
+//! ```
 //!
 //! </details>
-//!
+
 //! <details><summary>Structs with one field</summary>
 //!
-#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! // Input
-//! #[derive(delegate_display::DelegateDebug)]
-//! struct Foo { some_field: SomeType }
-//!
-//! // Output
-//! impl fmt::Debug for Foo {
-//!   #[inline]
-//!   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//!     fmt::Debug::fmt(&self.some_field, f)
+//! # use delegate_display::*;
+//! struct SomeType;
+//! impl core::fmt::Debug for SomeType {
+//!   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//!     f.write_str(">foo<")
 //!   }
 //! }
-//! ````
+//!
+//! #[derive(DelegateDebug)]
+//! struct Foo { some_field: SomeType }
+//!
+//! assert_eq!(format!("{:?}", Foo { some_field: SomeType }), ">foo<");
+//! ```
 //!
 //! </details>
+
+//! <details><summary>Enums with 0..=1 variants each</summary>
 //!
-//! <details><summary>Enums</summary>
-//!
-#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! // Input
+//! # use delegate_display::*;
+//! struct SomeType;
+//! struct AnotherType;
+//!
+//! impl core::fmt::Display for SomeType {
+//!   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//!     f.write_str(">foo<")
+//!   }
+//! }
+//! impl core::fmt::Display for AnotherType {
+//!   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//!     f.write_str(">bar<")
+//!   }
+//! }
+//!
+//! #[derive(DelegateDisplay)]
 //! enum MyEnum {
 //!   Foo,
 //!   Bar(SomeType),
-//!   Qux { baz: SomeType }
+//!   Qux { baz: AnotherType }
 //! }
 //!
-//! // Output
-//! fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//!   match self {
-//!     Self::Foo => f.write_str("Foo"),
-//!     Self::Bar(inner) => DebugOrDisplay::fmt(inner, f),
-//!     Self::Qux { baz } => DebugOrDisplay::fmt(baz, f),
-//!   }
-//! }
-//! ````
+//! assert_eq!(format!("{}", MyEnum::Bar(SomeType)), ">foo<");
+//! assert_eq!(format!("{}", MyEnum::Qux { baz: AnotherType }), ">bar<");
+//! ```
 //!
 //! </details>
+
+//! <details><summary>Empty structs</summary>
 //!
-//! <details><summary>Empty structs & enums</summary>
-//!
-#![cfg_attr(doctest, doc = " ````no_test")]
 //! ```
-//! // Input
+//! # use delegate_display::*;
+//! #
+//! #[derive(DelegateDebug, DelegateDisplay)]
 //! struct Foo;
-//! struct Bar{}
-//! struct Qux();
-//! enum Baz {}
 //!
-//! // Output
-//! fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-//!   Ok(())
+//! #[derive(DelegateDebug, DelegateDisplay)]
+//! struct Bar{}
+//!
+//! #[derive(DelegateDebug, DelegateDisplay)]
+//! struct Qux();
+//!
+//! assert_eq!(format!("{}-{:?}", Foo, Foo), "-");
+//! assert_eq!(format!("{}-{:?}", Bar{}, Bar{}), "-");
+//! assert_eq!(format!("{}-{:?}", Qux(), Qux()), "-");
+//! ```
+//!
+//! </details>
+
+//! <details><summary>Typed delegations</summary>
+//!
+//! Can be useful for further prettifying the output.
+//!
+//! ```
+//! # use delegate_display::*;
+//! #
+//! /// Some type that `Deref`s to the type we want to use in our formatting, in this case, `str`.
+//! #[derive(Debug)]
+//! struct Wrapper(&'static str);
+//! impl std::ops::Deref for Wrapper {
+//!   type Target = str;
+//!   fn deref(&self) -> &Self::Target {
+//!     self.0
+//!   }
 //! }
-//! ````
+//!
+//! #[derive(DelegateDebug)]
+//! #[ddebug(delegate_to(str))] // ignore `Wrapper` and debug the `str` it `Deref`s instead
+//! struct Typed(Wrapper);
+//!
+//! #[derive(DelegateDebug)] // Included for comparison
+//! struct Base(Wrapper);
+//!
+//! assert_eq!(format!("{:?}", Typed(Wrapper("foo"))), "\"foo\"");
+//! assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
+//! ```
 //!
 //! </details>
 
@@ -121,35 +162,6 @@
 //!
 //! </details>
 
-//! <details><summary>Typed delegations</summary>
-//!
-//! Can be useful for further prettifying the output.
-//!
-//! ```
-//! # use delegate_display::DelegateDebug;
-//! /// Some type that `Deref`s to the type we want to use in our formatting, in this case, `str`.
-//! #[derive(Debug)]
-//! struct Wrapper(&'static str);
-//! # impl std::ops::Deref for Wrapper {
-//! #   type Target = str;
-//! #   fn deref(&self) -> &Self::Target {
-//! #     self.0
-//! #   }
-//! # }
-//!
-//! #[derive(DelegateDebug)]
-//! #[ddebug(delegate_to(str))] // ignore `Wrapper` and debug the `str` it `Deref`s instead
-//! struct Typed(Wrapper);
-//!
-//! #[derive(DelegateDebug)] // Included for comparison
-//! struct Base(Wrapper);
-//!
-//! assert_eq!(format!("{:?}", Typed(Wrapper("foo"))), "\"foo\"");
-//! assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
-//! ```
-//!
-//! </details>
-//!
 //! <details><summary>Invalid inputs</summary>
 //!
 //! ```compile_fail
@@ -190,6 +202,17 @@
 //! union Foo { bar: u8 } // Unions are not supported
 //! ```
 //!
+//! ```compile_fail
+//! # use delegate_display::*;
+//! #
+//! struct NonDebug;
+//!
+//! #[derive(DelegateDebug)]
+//! struct Foo<A, B>(A, B);
+//!
+//! format!("{:?}", Foo(NonDebug, 1)); // NonDebug does not implement Debug
+//! ```
+//!
 //! </details>
 
 #![deny(clippy::correctness, clippy::suspicious)]
@@ -206,7 +229,10 @@ use proc_macro::TokenStream as BaseTokenStream;
 mod parse;
 mod tokenise;
 
-/// Derive the [Debug](core::fmt::Debug) trait
+/// Derive the [`Debug`](core::fmt::Debug) trait.
+///
+/// Its config attribute is `ddebug` or `dboth` can be used to configure both
+/// [`Debug`](core::fmt::Debug) & [`Display`](core::fmt::Display).
 ///
 /// See [crate-level documentation](crate) for information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDebug, attributes(ddebug, dboth))]
@@ -215,7 +241,10 @@ pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
     ParsedData::process("Debug", tokens)
 }
 
-/// Derive the [Display](core::fmt::Display) trait
+/// Derive the [`Display`](core::fmt::Display) trait.
+///
+/// Its config attribute is `ddebug` or `dboth` can be used to configure both
+/// [`Debug`](core::fmt::Debug) & [`Display`](core::fmt::Display).
 ///
 /// See [crate-level documentation](crate) for information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDisplay, attributes(ddisplay, dboth))]

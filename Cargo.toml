@@ -4,7 +4,7 @@
 name = "delegate-display"
 version = "2.1.1"
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.71.0"
 authors = [
   "Alorel <amolc@pm.me>",
 ]
@@ -31,7 +31,7 @@ proc-macro = true
 [dependencies]
 impartial-ord = "1"
 itoa = "1"
-macroific = { version = "1.2.2", features = ["attr_parse"] }
+macroific = { version = "2", features = ["attr_parse", "module-prefix"] }
 proc-macro2 = "1"
 quote = "1"
 syn = "2"

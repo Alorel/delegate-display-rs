@@ -2,9 +2,9 @@
 
 Lets you derive `Display` & `Debug` traits on types wrapping types that already implement them.
 
-[![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/ci.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/ci.yml?query=branch%3Amaster)
+[![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/test.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/test.yml?query=branch%3Amaster)
 [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
-[![docs.rs badge](https://img.shields.io/docsrs/delegate-display?label=docs.rs)](https://docs.rs/delegate-display)
+[![Coverage Status](https://coveralls.io/repos/github/Alorel/delegate-display-rs/badge.svg?branch=master)](https://coveralls.io/github/Alorel/delegate-display-rs?branch=master)
 [![dependencies badge](https://img.shields.io/librariesio/release/cargo/delegate-display)](https://libraries.io/cargo/delegate-display)
 
 # Examples

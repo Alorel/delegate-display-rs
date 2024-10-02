@@ -1,5 +1,4 @@
-//! Lets you derive `Display` & `Debug` traits on structs with
-//! `0..=1` fields & enums where each variant has `0..=1` fields - see input/output examples below.
+//! Lets you derive `Display` & `Debug` traits on types wrapping types that already implement them.
 //!
 //! [![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/ci.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/ci.yml?query=branch%3Amaster)
 //! [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
@@ -27,7 +26,7 @@
 //!
 //! </details>
 
-//! <details><summary>Structs with one field</summary>
+//! <details><summary>Structs with 0..=1 fields</summary>
 //!
 //! ```
 //! # use delegate_display::*;
@@ -73,6 +72,61 @@
 //!
 //! assert_eq!(format!("{}", MyEnum::Bar(SomeType)), ">foo<");
 //! assert_eq!(format!("{}", MyEnum::Qux { baz: AnotherType }), ">bar<");
+//! ```
+//!
+//! </details>
+
+//! <details><summary>Generics</summary>
+//!
+//! Generics are handled automatically for you
+//!
+//! ```
+//! # use delegate_display::*;
+//! #
+//! #[derive(DelegateDisplay)]
+//! struct MyStruct<T>(T);
+//!
+//! #[derive(DelegateDisplay)]
+//! enum MyEnum<A, B> {
+//!   A(A),
+//!   B { value: B },
+//! }
+//!
+//! assert_eq!(format!("{}", MyStruct(50)), "50");
+//! assert_eq!(format!("{}", MyEnum::<u8, i8>::A(75)), "75");
+//! assert_eq!(format!("{}", MyEnum::<u8, i8>::B { value: -1 }), "-1");
+//! ```
+//!
+//! </details>
+
+//! <details><summary>Structs & enums with 2+ fields</summary>
+//!
+//! The field being delegated to must be marked with the appropriate attribute.
+//!
+//! ```
+//! # use delegate_display::*;
+//!
+//! #[derive(DelegateDisplay)]
+//! struct MyStruct<T> {
+//!   label: String,
+//!   #[ddisplay]
+//!   value: T,
+//! }
+//!
+//! #[derive(DelegateDebug)]
+//! enum MyEnum {
+//!   Foo(#[ddebug] String, u8),
+//!   Bar { baz: u8, #[ddebug] qux: u8 }
+//! }
+//!
+//! let my_struct = MyStruct { label: "foo".into(), value: 42 };
+//! assert_eq!(format!("{}", my_struct), "42");
+//!
+//! let my_enum = MyEnum::Foo(".".into(), 1);
+//! assert_eq!(format!("{:?}", my_enum), "\".\"");
+//!
+//! let my_enum = MyEnum::Bar { baz: 2, qux: 3 };
+//! assert_eq!(format!("{:?}", my_enum), "3");
 //! ```
 //!
 //! </details>
@@ -165,25 +219,16 @@
 //! <details><summary>Invalid inputs</summary>
 //!
 //! ```compile_fail
-//! # use {std::sync::Arc, delegate_display::DelegateDisplay};
-//! #[derive(DelegateDisplay, Debug)]
-//! #[dboth(delegate_to(String))] // `delegate_to` is not supported on enums
-//! enum SomeEnum {
-//!   Foo(Arc<String>)
-//! }
-//! ```
-//!
-//! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
 //! struct TooManyFields1 {
 //!   foo: u8,
-//!   bar: u8, // Only one field permitted
+//!   bar: u8, // No fields marked with `#[ddebug]` or `#[dboth]`
 //! }
 //! ```
 //!
 //! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
-//! struct TooManyFields2(u8, u8); // too many fields
+//! struct TooManyFields2(u8, u8); // No fields marked with `#[ddebug]` or `#[dboth]`
 //! ```
 //!
 //! ```compile_fail
@@ -192,8 +237,8 @@
 //!   A, // this is ok
 //!   B(u8), // this is ok
 //!   C { foo: u8 }, // this is ok
-//!   D(u8, u8), // Only one field permitted
-//!   E { foo: u8, bar: u8 } // Only one field permitted
+//!   D(u8, u8), // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
+//!   E { foo: u8, bar: u8 } // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
 //! }
 //! ```
 //!
@@ -224,10 +269,12 @@
 )]
 #![warn(missing_docs)]
 
-use proc_macro::TokenStream as BaseTokenStream;
+use proc_macro::TokenStream as TokenStream1;
 
-mod parse;
-mod tokenise;
+mod implementation;
+use implementation::Implementation;
+
+const ATTR_BOTH: &str = "dboth";
 
 /// Derive the [`Debug`](core::fmt::Debug) trait.
 ///
@@ -237,8 +284,8 @@ mod tokenise;
 /// See [crate-level documentation](crate) for information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDebug, attributes(ddebug, dboth))]
 #[inline]
-pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
-    ParsedData::process("Debug", tokens)
+pub fn derive_debug(tokens: TokenStream1) -> TokenStream1 {
+    Implementation::exec(tokens, "ddebug", "Debug")
 }
 
 /// Derive the [`Display`](core::fmt::Display) trait.
@@ -249,31 +296,6 @@ pub fn derive_debug(tokens: BaseTokenStream) -> BaseTokenStream {
 /// See [crate-level documentation](crate) for information on what's acceptable and what's not.
 #[proc_macro_derive(DelegateDisplay, attributes(ddisplay, dboth))]
 #[inline]
-pub fn derive_display(tokens: BaseTokenStream) -> BaseTokenStream {
-    ParsedData::process("Display", tokens)
-}
-
-struct ParsedData {
-    ident: syn::Ident,
-    generics: syn::Generics,
-    first_field: FirstField,
-    options: ContainerOptions,
-}
-
-enum FieldLike {
-    Indexed(syn::Type),
-    Ident(syn::Ident, syn::Type),
-}
-
-type EnumData = (syn::Ident, Option<Box<FieldLike>>);
-
-enum FirstField {
-    Struct(Option<Box<FieldLike>>),
-    Enum(Vec<EnumData>),
-}
-
-#[derive(macroific::attr_parse::AttributeOptions, Default)]
-struct ContainerOptions {
-    pub bounds: syn::punctuated::Punctuated<syn::WherePredicate, syn::Token![,]>,
-    pub delegate_to: Option<syn::Type>,
+pub fn derive_display(tokens: TokenStream1) -> TokenStream1 {
+    Implementation::exec(tokens, "ddisplay", "Display")
 }

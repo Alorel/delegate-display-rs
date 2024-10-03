@@ -34,4 +34,4 @@ itoa = "1"
 macroific = { version = "2", features = ["attr_parse", "module-prefix"] }
 proc-macro2 = "1"
 quote = "1"
-syn = "2"
+syn = { version = "2", features = ["clone-impls"] }

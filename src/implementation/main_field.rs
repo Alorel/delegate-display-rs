@@ -1,5 +1,5 @@
 use super::dual_attr::AttrKind;
-use crate::ATTR_BOTH;
+use crate::ATTR_ANY;
 use macroific::prelude::*;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
@@ -85,13 +85,13 @@ impl MainField {
                         first_field.update(AttrKind::CatchAll, idx, field.ident, field.ty);
                     }
                     Some(AttrKind::Primary) => {}
-                    Some(AttrKind::CatchAll) => return Err(duplicate_err(ATTR_BOTH, span)),
+                    Some(AttrKind::CatchAll) => return Err(duplicate_err(ATTR_ANY, span)),
                 },
             }
         }
 
         if num_fields > 1 && first_field.mark.is_none() {
-            let msg = format!("At least one field must be marked with #[{attr_name}] or #[{ATTR_BOTH}] on types with more than one field");
+            let msg = format!("At least one field must be marked with #[{attr_name}] or #[{ATTR_ANY}] on types with more than one field");
             Err(Error::new(span, msg))
         } else {
             Ok(Some(first_field))

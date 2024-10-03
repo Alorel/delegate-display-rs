@@ -1,4 +1,4 @@
-use crate::ATTR_BOTH;
+use crate::ATTR_ANY;
 use impartial_ord::ImpartialOrd;
 use std::cmp::Ordering;
 use syn::Attribute;
@@ -48,7 +48,7 @@ impl DualAttr {
         Some(Self {
             attr_ty: if ident_str == attr_name {
                 AttrKind::Primary
-            } else if ident_str == ATTR_BOTH {
+            } else if ident_str == ATTR_ANY {
                 AttrKind::CatchAll
             } else {
                 return None;

@@ -1,4 +1,4 @@
-//! Lets you derive `Display` & `Debug` traits on types wrapping types that already implement them.
+//! Lets you derive [`fmt`](::core::fmt) traits on types wrapping types that already implement them.
 //!
 //! [![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/test.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/test.yml?query=branch%3Amaster)
 //! [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
@@ -78,7 +78,7 @@
 
 //! <details><summary>Generics</summary>
 //!
-//! Generics are handled automatically for you
+//! Generics are handled automatically for you.
 //!
 //! ```
 //! # use delegate_display::*;
@@ -189,14 +189,13 @@
 //! # use core::fmt::{Display, Formatter, self};
 //! # use std::ops::Deref;
 //! #
-//! struct CopyDisplayable<T>(T);
-//!
-//! impl<T> Deref for CopyDisplayable<T> {
-//!   type Target = T;
-//!   fn deref(&self) -> &Self::Target {
-//!     &self.0
-//!   }
-//! }
+//! struct CopyDisplayable<T>(T); // Implements Deref
+//! # impl<T> Deref for CopyDisplayable<T> {
+//! #   type Target = T;
+//! #   fn deref(&self) -> &Self::Target {
+//! #     &self.0
+//! #   }
+//! # }
 //!
 //! impl<T: Copy> Display for CopyDisplayable<T> {
 //!   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -216,19 +215,51 @@
 //!
 //! </details>
 
+//! <details><summary>Multiple traits at once</summary>
+//!
+//! Instead of re-parsing your struct/enum multiple times, you can instead derive `DelegateFmt`.
+//! It supports every individual macro's attribute along with `dany` as a catch-all default.
+//!
+//! ```
+//! # use delegate_display::*;
+//! #
+//! struct Wrapper(u8); // implements Deref
+//! # impl ::std::ops::Deref for Wrapper {
+//! #   type Target = u8;
+//! #   fn deref(&self) -> &Self::Target {
+//! #     &self.0
+//! #   }
+//! # }
+//!
+//! #[derive(DelegateFmt)]
+//! #[dfmt(dany(delegate_to(u8)), ddebug, ddisplay, dbinary)]
+//! struct MyStruct(#[dany] Wrapper, #[dbinary] Wrapper);
+//! # impl MyStruct {
+//! #   fn new(a: u8, b: u8) -> Self {
+//! #     Self(Wrapper(a), Wrapper(b))
+//! #   }
+//! # }
+//!
+//! assert_eq!(format!("{:?}", MyStruct::new(1, 2)), "1");
+//! assert_eq!(format!("{}", MyStruct::new(3, 4)), "3");
+//! assert_eq!(format!("{:b}", MyStruct::new(5, 6)), "110");
+//! ```
+//!
+//! </details>
+
 //! <details><summary>Invalid inputs</summary>
 //!
 //! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
 //! struct TooManyFields1 {
 //!   foo: u8,
-//!   bar: u8, // No fields marked with `#[ddebug]` or `#[dboth]`
+//!   bar: u8, // No fields marked with `#[ddebug]` or `#[dany]`
 //! }
 //! ```
 //!
 //! ```compile_fail
 //! #[derive(delegate_display::DelegateDebug)]
-//! struct TooManyFields2(u8, u8); // No fields marked with `#[ddebug]` or `#[dboth]`
+//! struct TooManyFields2(u8, u8); // No fields marked with `#[ddebug]` or `#[dany]`
 //! ```
 //!
 //! ```compile_fail
@@ -237,8 +268,8 @@
 //!   A, // this is ok
 //!   B(u8), // this is ok
 //!   C { foo: u8 }, // this is ok
-//!   D(u8, u8), // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
-//!   E { foo: u8, bar: u8 } // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
+//!   D(u8, u8), // ERR: No fields marked with `#[ddebug]` or `#[dany]`
+//!   E { foo: u8, bar: u8 } // ERR: No fields marked with `#[ddebug]` or `#[dany]`
 //! }
 //! ```
 //!
@@ -269,33 +300,60 @@
 )]
 #![warn(missing_docs)]
 
-use proc_macro::TokenStream as TokenStream1;
-
 mod implementation;
-use implementation::Implementation;
 
-const ATTR_BOTH: &str = "dboth";
+const ATTR_ANY: &str = "dany";
+const ATTR_FMT: &str = "dfmt";
 
-/// Derive the [`Debug`](core::fmt::Debug) trait.
-///
-/// Its config attribute is `ddebug` or `dboth` can be used to configure both
-/// [`Debug`](core::fmt::Debug) & [`Display`](core::fmt::Display).
-///
-/// See [crate-level documentation](crate) for information on what's acceptable and what's not.
-#[proc_macro_derive(DelegateDebug, attributes(ddebug, dboth))]
-#[inline]
-pub fn derive_debug(tokens: TokenStream1) -> TokenStream1 {
-    Implementation::exec(tokens, "ddebug", "Debug")
+macro_rules! alias {
+    ($($delegate_name: ident ($attr_name: ident) => $fmt_trait: literal),+ $(,)?) => {
+        /// Derive multiple [`fmt`](::core::fmt) traits at once without needing to repeatedly parse the struct/enum.
+        ///
+        /// See "Multiple traits at once" example in [crate-level documentation](crate).
+        #[proc_macro_derive(DelegateFmt, attributes(dfmt, dany, $($attr_name),+))]
+        #[inline]
+        pub fn dfmt(input: ::proc_macro::TokenStream) -> ::proc_macro::TokenStream {
+            implementation::Implementation::exec_compound(input)
+        }
+
+       $(
+            #[doc = concat!(" Derive the [`", $fmt_trait, "`](::core::fmt::", $fmt_trait, ") trait.")]
+            #[doc = ""]
+            #[doc = concat!(" Its config attribute is `", stringify!($attr_name) ,"`; alternatively, `dany` can be used")]
+            #[doc = " to configure all derived [`fmt`](::core::fmt) traits."]
+            #[doc = ""]
+            #[doc = " See [crate-level documentation](crate) for config examples."]
+            #[proc_macro_derive($delegate_name, attributes($attr_name, dany))]
+            #[inline]
+            pub fn $attr_name(input: ::proc_macro::TokenStream) -> ::proc_macro::TokenStream {
+                implementation::Implementation::exec(
+                    input,
+                    implementation::Alias::$attr_name.attr_name,
+                    implementation::Alias::$attr_name.trait_name,
+                )
+            }
+        )+
+
+        impl implementation::Alias<'static> {
+            $(
+                #[allow(non_upper_case_globals)]
+                const $attr_name: implementation::Alias<'static> = implementation::Alias {
+                    attr_name: stringify!($attr_name),
+                    trait_name: $fmt_trait,
+                };
+            )+
+        }
+    };
 }
 
-/// Derive the [`Display`](core::fmt::Display) trait.
-///
-/// Its config attribute is `ddebug` or `dboth` can be used to configure both
-/// [`Debug`](core::fmt::Debug) & [`Display`](core::fmt::Display).
-///
-/// See [crate-level documentation](crate) for information on what's acceptable and what's not.
-#[proc_macro_derive(DelegateDisplay, attributes(ddisplay, dboth))]
-#[inline]
-pub fn derive_display(tokens: TokenStream1) -> TokenStream1 {
-    Implementation::exec(tokens, "ddisplay", "Display")
+alias! {
+    DelegateBinary(dbinary) => "Binary",
+    DelegateDebug(ddebug) => "Debug",
+    DelegateDisplay(ddisplay) => "Display",
+    DelegateLowerExp(dlexp) => "LowerExp",
+    DelegateLowerHex(dlhex) => "LowerHex",
+    DelegateOctal(doctal) => "Octal",
+    DelegatePointer(dpointer) => "Pointer",
+    DelegateUpperExp(duexp) => "UpperExp",
+    DelegateUpperHex(duhex) => "UpperHex",
 }

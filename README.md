@@ -1,6 +1,6 @@
 <!-- cargo-rdme start -->
 
-Lets you derive `Display` & `Debug` traits on types wrapping types that already implement them.
+Lets you derive [`fmt`](https://doc.rust-lang.org/stable/core/fmt/) traits on types wrapping types that already implement them.
 
 [![master CI badge](https://img.shields.io/github/actions/workflow/status/Alorel/delegate-display-rs/test.yml?label=master%20CI)](https://github.com/Alorel/delegate-display-rs/actions/workflows/test.yml?query=branch%3Amaster)
 [![crates.io badge](https://img.shields.io/crates/v/delegate-display)](https://crates.io/crates/delegate-display)
@@ -73,7 +73,7 @@ assert_eq!(format!("{}", MyEnum::Qux { baz: AnotherType }), ">bar<");
 </details>
 <details><summary>Generics</summary>
 
-Generics are handled automatically for you
+Generics are handled automatically for you.
 
 ```rust
 #[derive(DelegateDisplay)]
@@ -169,14 +169,7 @@ assert_eq!(format!("{:?}", Base(Wrapper("bar"))), "Wrapper(\"bar\")");
 <details><summary>Custom generic bounds</summary>
 
 ```rust
-struct CopyDisplayable<T>(T);
-
-impl<T> Deref for CopyDisplayable<T> {
-  type Target = T;
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
-}
+struct CopyDisplayable<T>(T); // Implements Deref
 
 impl<T: Copy> Display for CopyDisplayable<T> {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -195,19 +188,37 @@ assert_eq!(format!("{}", dbg), "cdbg");
 ```
 
 </details>
+<details><summary>Multiple traits at once</summary>
+
+Instead of re-parsing your struct/enum multiple times, you can instead derive `DelegateFmt`.
+It supports every individual macro's attribute along with `dany` as a catch-all default.
+
+```rust
+struct Wrapper(u8); // implements Deref
+
+#[derive(DelegateFmt)]
+#[dfmt(dany(delegate_to(u8)), ddebug, ddisplay, dbinary)]
+struct MyStruct(#[dany] Wrapper, #[dbinary] Wrapper);
+
+assert_eq!(format!("{:?}", MyStruct::new(1, 2)), "1");
+assert_eq!(format!("{}", MyStruct::new(3, 4)), "3");
+assert_eq!(format!("{:b}", MyStruct::new(5, 6)), "110");
+```
+
+</details>
 <details><summary>Invalid inputs</summary>
 
 ```rust
 #[derive(delegate_display::DelegateDebug)]
 struct TooManyFields1 {
   foo: u8,
-  bar: u8, // No fields marked with `#[ddebug]` or `#[dboth]`
+  bar: u8, // No fields marked with `#[ddebug]` or `#[dany]`
 }
 ```
 
 ```rust
 #[derive(delegate_display::DelegateDebug)]
-struct TooManyFields2(u8, u8); // No fields marked with `#[ddebug]` or `#[dboth]`
+struct TooManyFields2(u8, u8); // No fields marked with `#[ddebug]` or `#[dany]`
 ```
 
 ```rust
@@ -216,8 +227,8 @@ enum SomeEnum {
   A, // this is ok
   B(u8), // this is ok
   C { foo: u8 }, // this is ok
-  D(u8, u8), // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
-  E { foo: u8, bar: u8 } // ERR: No fields marked with `#[ddebug]` or `#[dboth]`
+  D(u8, u8), // ERR: No fields marked with `#[ddebug]` or `#[dany]`
+  E { foo: u8, bar: u8 } // ERR: No fields marked with `#[ddebug]` or `#[dany]`
 }
 ```
 

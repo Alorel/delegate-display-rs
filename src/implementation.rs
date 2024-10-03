@@ -1,16 +1,19 @@
+mod compound;
 mod dual_attr;
 mod main_field;
 mod opts;
 mod variant;
 
+pub use compound::Alias;
+
 use main_field::MainField;
 use variant::{Style, Variant};
 
-use crate::TokenStream1;
 use macroific::elements::module_prefix::RESULT;
 use macroific::elements::{GenericImpl, ModulePrefix};
 use macroific::prelude::*;
 use opts::ContainerOptions;
+use proc_macro::TokenStream as TokenStream1;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{parse_quote, Data, DeriveInput, Error, Generics};
@@ -51,10 +54,14 @@ impl<'a> Implementation<'a> {
             generics,
         };
 
+        common.exec_data(data, attr_name)
+    }
+
+    fn exec_data(self, data: Data, attr_name: &str) -> syn::Result<TokenStream> {
         match data {
             Data::Struct(data) => {
                 let main_field = MainField::resolve_from_fields(data.fields, attr_name)?;
-                Ok(common.impl_struct(main_field))
+                Ok(self.impl_struct(main_field))
             }
             Data::Enum(data) => {
                 let variants: Vec<Variant> = data
@@ -63,7 +70,7 @@ impl<'a> Implementation<'a> {
                     .map(move |v| Variant::from_syn(v, attr_name))
                     .collect::<syn::Result<_>>()?;
 
-                Ok(common.impl_enum(variants))
+                Ok(self.impl_enum(variants))
             }
             Data::Union(u) => Err(Error::new_spanned(u.union_token, "Unions not supported")),
         }

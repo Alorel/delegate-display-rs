@@ -74,7 +74,7 @@ impl Add<ContainerOptions> for &ContainerOptions {
 }
 
 impl MultiContainerOptions {
-    pub fn into_iter(self) -> impl FusedIterator<Item = (Alias<'static>, ContainerOptions)> {
+    pub fn into_iter(self) -> impl FusedIterator<Item = (Alias, ContainerOptions)> {
         let Self {
             dany,
             dbinary,

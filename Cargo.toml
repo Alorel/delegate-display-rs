@@ -29,9 +29,9 @@ include = [
 proc-macro = true
 
 [dependencies]
-impartial-ord = "1"
+impartial-ord = "2"
 itoa = "1"
-macroific = { version = "2", features = ["attr_parse", "module-prefix"] }
+macroific = { version = "3", features = ["attr_parse", "module-prefix"] }
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", features = ["clone-impls"] }
+syn = { version = "3", features = ["clone-impls"] }

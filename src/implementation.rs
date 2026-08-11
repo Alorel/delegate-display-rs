@@ -18,17 +18,24 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{parse_quote, Data, DeriveInput, Error, Generics};
 
-const FMT: ModulePrefix<2> = ModulePrefix::new(["core", "fmt"]);
+const FMT: ModulePrefix = ModulePrefix::new(&["core", "fmt"]);
 
-pub(crate) struct Implementation<'a> {
-    trait_name: &'a str,
+pub(crate) struct Implementation {
+    trait_name: &'static str,
     ident: Ident,
     generics: Generics,
     opts: ContainerOptions,
 }
 
-impl<'a> Implementation<'a> {
-    pub fn exec(input: TokenStream1, attr_name: &str, trait_name: &'a str) -> TokenStream1 {
+macro_rules! get_trait_path {
+    ($var: ident = $this: ident) => {
+        let $var = ["core", "fmt", $this.trait_name];
+        let $var = ::macroific::elements::ModulePrefix::new(&$var);
+    };
+}
+
+impl Implementation {
+    pub fn exec(input: TokenStream1, attr_name: &str, trait_name: &'static str) -> TokenStream1 {
         Self::exec_2(input, attr_name, trait_name)
             .unwrap_or_else(Error::into_compile_error)
             .into()
@@ -37,7 +44,7 @@ impl<'a> Implementation<'a> {
     fn exec_2(
         input: TokenStream1,
         attr_name: &str,
-        trait_name: &'a str,
+        trait_name: &'static str,
     ) -> syn::Result<TokenStream> {
         let DeriveInput {
             attrs,
@@ -76,15 +83,11 @@ impl<'a> Implementation<'a> {
         }
     }
 
-    fn trait_path(&self) -> ModulePrefix<3> {
-        ModulePrefix::new(["core", "fmt", self.trait_name])
-    }
-
     fn impl_enum(mut self, variants: Vec<Variant>) -> TokenStream {
         self.preprocess_generics_enum(&variants);
         let mut tokens = self.header();
         let mut has_skipped_arms = false;
-        let trait_path = self.trait_path();
+        get_trait_path!(trait_path = self);
 
         let arms = variants.into_iter()
             .filter_map(|variant| {
@@ -160,9 +163,9 @@ impl<'a> Implementation<'a> {
     }
 
     fn impl_struct(mut self, main_field: Option<MainField>) -> TokenStream {
-        self.preprocess_generics_struct(&main_field);
+        self.preprocess_generics_struct(main_field.as_ref());
         let mut tokens = self.header();
-        let trait_path = self.trait_path();
+        get_trait_path!(trait_path = self);
 
         let (body, param) = if let Some(main_field) = main_field {
             let ident = main_field.ident_for_struct();
@@ -191,8 +194,9 @@ impl<'a> Implementation<'a> {
     }
 
     fn header(&self) -> TokenStream {
+        get_trait_path!(trait_path = self);
         let header = GenericImpl::new(&self.generics)
-            .with_trait(self.trait_path())
+            .with_trait(trait_path)
             .with_target(&self.ident);
 
         quote! {
@@ -202,7 +206,7 @@ impl<'a> Implementation<'a> {
         }
     }
 
-    fn preprocess_generics_struct(&mut self, main_field: &Option<MainField>) {
+    fn preprocess_generics_struct(&mut self, main_field: Option<&MainField>) {
         if self.generics.params.is_empty() {
             return;
         }
@@ -250,7 +254,7 @@ impl<'a> Implementation<'a> {
         T: ToTokens,
     {
         let predicate = {
-            let path = self.trait_path();
+            get_trait_path!(path = self);
             parse_quote!(#ty: #path)
         };
 

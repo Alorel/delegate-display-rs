@@ -7,12 +7,12 @@ use proc_macro2::{Span, TokenStream};
 use syn::{DeriveInput, Error};
 
 #[derive(Copy, Clone)]
-pub struct Alias<'a> {
-    pub attr_name: &'a str,
-    pub trait_name: &'a str,
+pub struct Alias {
+    pub attr_name: &'static str,
+    pub trait_name: &'static str,
 }
 
-impl<'a> Implementation<'a> {
+impl Implementation {
     pub fn exec_compound(input: TokenStream1) -> TokenStream1 {
         Self::exec_compound_2(input)
             .unwrap_or_else(Error::into_compile_error)

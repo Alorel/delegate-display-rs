@@ -334,10 +334,10 @@ macro_rules! alias {
             }
         )+
 
-        impl implementation::Alias<'static> {
+        impl implementation::Alias {
             $(
                 #[allow(non_upper_case_globals)]
-                const $attr_name: implementation::Alias<'static> = implementation::Alias {
+                const $attr_name: implementation::Alias = implementation::Alias {
                     attr_name: stringify!($attr_name),
                     trait_name: $fmt_trait,
                 };
